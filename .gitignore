@@ -1,0 +1,25 @@
+# Python 字节码与缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 数据与日志 (建议上传空目录或保留示例，不上传大规模抓取数据)
+# 如果你希望仓库保持纯净，取消下面两行的注释：
+# news_data/
+# *.log
+
+# 打包生成的临时文件
+build/
+dist/
+*.spec
+*.command
+
+# 虚拟环境 (可选)
+venv/
+.env/
+.venv/
+.python-version
