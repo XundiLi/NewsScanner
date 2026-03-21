@@ -53,8 +53,22 @@ def auto_sync():
     print(start_msg)
     
     try:
-        # 核心逻辑：获取数据并保存
-        dumped_data = get_sina_724_dt_range(f_start, f_end, save=True)
+        # 核心逻辑：获取数据并保存，增加重试机制
+        max_retries = 3
+        retry_count = 0
+        dumped_data = []
+        
+        while retry_count < max_retries:
+            try:
+                dumped_data = get_sina_724_dt_range(f_start, f_end, save=True)
+                break  # 成功则跳出循环
+            except Exception as e:
+                retry_count += 1
+                if retry_count < max_retries:
+                    print(f"⚠️ [重试 {retry_count}/{max_retries}] 同步异常: {e}. 正在重试...")
+                else:
+                    raise e  # 超过重试次数，抛出异常
+        
         count = len(dumped_data)
         success_msg = f"✅ [定时任务完成] 日期 {date_str} 同步成功，共计 {count} 条。"
         print(success_msg)

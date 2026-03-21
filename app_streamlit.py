@@ -59,11 +59,9 @@ if active_tab == "🚀 实时监控模式":
     memory_limit_mins = st.sidebar.slider("内存保留时长 (分钟)", 10, 120, 60)
 
     st.sidebar.markdown("---")
-    enable_filter = st.sidebar.checkbox("开启实时语义过滤", value=False)
-    rt_filter_keyword = st.sidebar.text_input("智能搜索关键词", value="", placeholder="输入关键词，如：美国矿产协议", disabled=not enable_filter, key="rt_filter")
+    rt_filter_keyword = st.sidebar.text_input("智能搜索关键词", value="", placeholder="输入关键词，如：美国矿产协议", key="rt_filter")
     rt_filter_threshold = st.sidebar.slider(
         "实时匹配阈值", 0.1, 0.9, 0.35, 0.025, 
-        disabled=not enable_filter,
         key="rt_threshold"
     )
 
@@ -99,7 +97,7 @@ if active_tab == "🚀 实时监控模式":
         col2.markdown(f"**上次同步时间:** `{st.session_state.last_refresh_success}` (每 {refresh_interval} 分钟自动同步)")
 
         display_data = st.session_state.news_memory
-        if enable_filter and rt_filter_keyword and display_data:
+        if rt_filter_keyword and display_data:
             display_data = filter_news(display_data, keyword=rt_filter_keyword, threshold=rt_filter_threshold)
             st.caption(f"🔍 实时过滤：匹配到 {len(display_data)} 条记录")
 
