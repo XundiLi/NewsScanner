@@ -257,47 +257,45 @@ def filter_news(news_list: List[Dict[str, Any]], keyword: Optional[str] = None, 
 
 def transform_to_ai_text(raw_data_list: List[Dict[str, Any]], chunk_size: int = 30) -> List[str]:
     """
-    将快讯转化为 AI 提示词块
-    :param raw_data_list: 清洗后的列表
+    将快讯转化为 AI 提示词块 (内部强制正序处理，方便 Wiki 模式增量摄取)
+    :param raw_data_list: 清洗后的列表 (不论输入顺序，此处会克隆并排序)
     :param chunk_size: 每块条数
     :return: 文本块列表
     """
+    # 克隆并进行正序排序，确保 AI 摄取是按时间线进行的
+    sorted_data = sorted(raw_data_list, key=lambda x: x.get('timestamp', ''), reverse=False)
+    
     chunks = []
-    total = len(raw_data_list)
+    total = len(sorted_data)
     
     for i in range(0, total, chunk_size):
-        chunk_items = raw_data_list[i : i + chunk_size]
+        chunk_items = sorted_data[i : i + chunk_size]
         chunk_index = (i // chunk_size) + 1
-        total_chunks = (total + chunk_size - 1) // chunk_size
         
-        # 提取当前块的时间范围作为元数据
         start_t = chunk_items[0].get('timestamp', '')
         end_t = chunk_items[-1].get('timestamp', '')
         
-        # 构建当前块的头部引导词，帮助 AI 定位
         header = (
-            f"--- [NEWS CHUNK {chunk_index}/{total_chunks}] ---\n"
-            f"时间跨度: {start_t} 至 {end_t}\n"
-            f"包含条数: {len(chunk_items)}\n"
+            f"--- [NEWS CHUNK ID: {chunk_index}] ---\n"
+            f"时间范围: {start_t} TO {end_t}\n"
+            f"条数: {len(chunk_items)}\n"
             "------------------------------------------\n"
         )
         
         formatted_lines = []
         for item in chunk_items:
+            news_id = item.get('id', 'N/A')
             full_time = item.get('timestamp', '') 
-            content = item.get('content', '').replace('\n', ' ') # 保持单条记录一行，减少 AI 解析干扰
+            content = item.get('content', '').replace('\n', ' ')
             
-            # 处理品种标签
             stocks = [s.get('symbol') for s in item.get('stocks', [])]
             stock_label = f"【{'/'.join(stocks)}】" if stocks else ""
             
-            # 重要性视觉权重
             icon = "🔥" if item.get('importance', 0) > 0 or item.get('is_top', 0) > 0 else "·"
             icon = "🔁" if item.get('is_repeat', 0) > 0 else icon
             
-            formatted_lines.append(f"{icon} {full_time} {content} {stock_label}")
+            formatted_lines.append(f"[{news_id}] {icon} {full_time} {content} {stock_label}")
         
-        # 将头部信息与内容合并
         full_chunk_text = header + "\n".join(formatted_lines) + "\n\n"
         chunks.append(full_chunk_text)
         

@@ -38,7 +38,21 @@ conda create -n news_scanner python=3.10
 conda activate news_scanner
 ```
 
-### 2. 安装依赖
+### 2. 下载并安装 Git LFS
+由于本项目包含较大的预训练模型文件（存储在 `transformer_models/` 目录），需要使用 Git LFS (Large File Storage) 来下载完整模型文件。
+
+1. **安装 Git LFS**：
+   - macOS (Homebrew): `brew install git-lfs`
+   - Linux (Ubuntu/Debian): `sudo apt-get install git-lfs`
+2. **在项目目录下激活并拉取文件**：
+   ```bash
+   git lfs install
+   git lfs pull
+   ```
+
+*注意：如果 `model.safetensors` 文件仅有 1KB 左右（指针文件），程序运行时会报错 `SafetensorError: Error while deserializing header`，请务必执行以上拉取步骤。*
+
+### 3. 安装依赖
 在项目根目录下运行：
 
 ```bash
