@@ -41,7 +41,7 @@ conda activate news_scanner
 在项目根目录下运行：
 
 ```bash
-pip install requests torch pandas sentence-transformers streamlit
+pip install requests torch pandas sentence-transformers streamlit streamlit-autorefresh
 ```
 
 ### 3. 配置飞书通知 (可选)
