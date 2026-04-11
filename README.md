@@ -1,6 +1,6 @@
 # 📰 Sina 7x24 News Scanner & Intelligence System
 
-这是一个基于 Python 的新浪 7x24 快讯抓取与智能分析系统。它支持实时同步、语义搜索、数据持久化，并集成了飞书通知功能。
+这是一个基于 Python 的新浪 7x24 快讯抓取与查询系统。它支持实时同步、语义搜索、数据持久化。
 
 ---
 
@@ -9,7 +9,6 @@
 - **实时同步**：自动补全缺失的新闻数据，支持按天或按时间段抓取。
 - **语义搜索**：内置 `paraphrase-multilingual-MiniLM-L12-v2` 模型，支持跨语言语义匹配（不只是关键词匹配）。
 - **数据持久化**：新闻以 `JSONL` 格式存储在本地 `news_data` 目录，方便后续分析。
-- **飞书集成**：任务完成后自动发送同步报告至飞书群组。
 - **可视化界面**：基于 Streamlit 的交互式 Web 搜索与展示界面。
 
 ---
@@ -56,7 +55,7 @@ conda activate news_scanner
 在项目根目录下运行：
 
 ```bash
-pip install requests torch pandas sentence-transformers streamlit
+pip install requests torch pandas sentence-transformers streamlit streamlit-autorefresh
 ```
 
 ### 3. 配置飞书通知 (可选)
