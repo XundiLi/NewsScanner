@@ -10,9 +10,9 @@ import torch
 import sys
 import pandas as pd
 from datetime import datetime, timedelta
-from sentence_transformers import SentenceTransformer, util
 from typing import List, Dict, Optional, Any, Union
 from news_scanner_engine import SinaNewsScanner
+from sentence_transformers import util
 
 # ==========================================
 # 相对路径逻辑支持
@@ -42,7 +42,7 @@ logger = logging.getLogger("SinaScanner")
 # ==========================================
 # 模块级功能函数
 # ==========================================
-LOCAL_MODEL_PATH = os.path.join(BASE_DIR, "transformer_models", "paraphrase-multilingual-MiniLM-L12-v2")
+LOCAL_MODEL_PATH = os.path.join(BASE_DIR, "transformer_models", "bge-small-zh-v1.5")
 _engine = SinaNewsScanner(model_name = LOCAL_MODEL_PATH)
 
 def get_sina_724_dt_range(start_time_str: str, end_time_str: str, save: bool = True, file_format: str = "jsonl") -> List[Dict[str, Any]]:
@@ -243,7 +243,7 @@ def filter_news(news_list: List[Dict[str, Any]], keyword: Optional[str] = None, 
     model = _engine.semantic_model
     corpus = [it.get('content', '') for it in pre]
     corpus_emb = model.encode(corpus, convert_to_tensor=True)
-    query_emb = model.encode(keyword, convert_to_tensor=True)
+    query_emb = model.encode("为这个句子生成表示以用于检索相关文章：" + keyword, convert_to_tensor=True)
     scores = util.cos_sim(query_emb, corpus_emb)[0]
     
     res = []

@@ -1,4 +1,9 @@
 import os
+import torch
+# 锁死单线程 + 关闭梯度
+os.environ["OMP_NUM_THREADS"] = "1"
+torch.set_num_threads(1)
+torch.set_grad_enabled(False)
 import time
 import random
 import re
@@ -6,7 +11,6 @@ import json
 import glob
 import logging
 import requests
-import torch
 import pandas as pd
 from datetime import datetime, timedelta
 from sentence_transformers import SentenceTransformer, util
@@ -31,7 +35,7 @@ class SinaNewsScanner:
     新浪7x24快讯抓取与处理引擎
     封装了网络请求、数据解析及语义模型管理
     """
-    def __init__(self, model_name: str = 'paraphrase-multilingual-MiniLM-L12-v2'):
+    def __init__(self, model_name: str = 'bge-small-zh-v1.5'):
         """
         初始化引擎
         :param model_name: 用于语义过滤的 sentence-transformers 模型名称

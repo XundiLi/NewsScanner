@@ -55,13 +55,13 @@ if active_tab == "🚀 实时监控模式":
     # 侧边栏控制
     st.sidebar.markdown("---")
     st.sidebar.header("⚙️ 实时监控参数")
-    refresh_interval = st.sidebar.slider("自动刷新间隔 (分钟)", 0.5, 30.0, 0.5, step=0.5)
+    refresh_interval = st.sidebar.slider("自动刷新间隔 (分钟)", 0.5, 30.0, 3.0, step=0.5)
     memory_limit_mins = st.sidebar.slider("内存保留时长 (分钟)", 10, 120, 60)
 
     st.sidebar.markdown("---")
-    rt_filter_keyword = st.sidebar.text_input("智能搜索关键词", value="", placeholder="输入关键词，如：美国矿产协议", key="rt_filter")
+    rt_filter_keyword = st.sidebar.text_input("智能搜索关键词", value="", placeholder="输入关键词，如：伊朗战争局势", key="rt_filter")
     rt_filter_threshold = st.sidebar.slider(
-        "实时匹配阈值", 0.1, 0.9, 0.35, 0.025, 
+        "搜索匹配阈值", 0.1, 0.9, 0.40, 0.025, 
         key="rt_threshold"
     )
 
@@ -130,7 +130,7 @@ else:
 
     st.sidebar.markdown("---")
     hist_keyword = st.sidebar.text_input("历史库语义搜索 (关键词)", placeholder="例如：半导体、美联储...", key="hist_k")
-    hist_threshold = st.sidebar.slider("搜索匹配阈值", 0.1, 0.9, 0.35, 0.05, key="hist_t")
+    hist_threshold = st.sidebar.slider("搜索匹配阈值", 0.1, 0.9, 0.40, 0.05, key="hist_t")
     
     run_hist = st.sidebar.button("🚀 开始检索历史库", use_container_width=True)
 
