@@ -22,7 +22,6 @@ st.set_page_config(page_title="Jedi News Scanner", page_icon="🕵️‍♂️",
 # 隐藏 Streamlit 默认菜单和水印
 hide_st_style = """
             <style>
-            #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
             header {visibility: hidden;}
             </style>
