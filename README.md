@@ -1,4 +1,4 @@
-# 📰 Sina 7x24 News Scanner & Intelligence System
+# 📰 Jedi News Scanner
 
 这是一个基于 Python 的新浪 7x24 快讯抓取与查询系统。它支持实时同步、语义搜索、数据持久化。
 
@@ -7,7 +7,7 @@
 ## 🌟 核心功能
 
 - **实时同步**：自动补全缺失的新闻数据，支持按天或按时间段抓取。
-- **语义搜索**：内置 `paraphrase-multilingual-MiniLM-L12-v2` 模型，支持跨语言语义匹配（不只是关键词匹配）。
+- **语义搜索**：内置 `bge-small-zh-v1.5` 模型，支持中文语义匹配（不只是关键词匹配）。
 - **数据持久化**：新闻以 `JSONL` 格式存储在本地 `news_data` 目录，方便后续分析。
 - **可视化界面**：基于 Streamlit 的交互式 Web 搜索与展示界面。
 
