@@ -3,7 +3,6 @@ import time
 import os
 import sys
 from datetime import datetime, timedelta
-from streamlit_autorefresh import st_autorefresh
 
 # 确保能导入同目录下的 utils
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))

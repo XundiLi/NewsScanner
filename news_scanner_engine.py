@@ -1,19 +1,9 @@
-import os
-import torch
-# 锁死单线程 + 关闭梯度
-os.environ["OMP_NUM_THREADS"] = "1"
-torch.set_num_threads(1)
-torch.set_grad_enabled(False)
-import time
-import random
 import re
 import json
-import glob
 import logging
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
-from sentence_transformers import SentenceTransformer, util
 from fastembed import TextEmbedding
 from typing import List, Dict, Optional, Any, Union
 
