@@ -13,6 +13,14 @@ from news_scanner_utils import (
     transform_to_ui_text, 
     load_and_merge_news
 )
+from news_scanner_engine import SinaNewsScanner
+
+# 初始化共享的 scanner 实例（避免每个用户重复加载模型）
+if "shared_scanner" not in st.session_state:
+    st.session_state.shared_scanner = SinaNewsScanner(
+        model_name='BAAI/bge-small-zh-v1.5', 
+        model_path=os.path.join(os.path.dirname(__file__), 'transformer_models','BAAI--bge-small-zh-v1.5')
+    )
 
 # ==========================================
 # 页面配置
@@ -71,7 +79,7 @@ if active_tab == "🚀 实时监控模式":
             start_str = st.session_state.last_fetch_time.strftime("%Y-%m-%d %H:%M:%S")
             end_str = now.strftime("%Y-%m-%d %H:%M:%S")
             
-            new_items = get_sina_724_dt_range(start_str, end_str, save=False)
+            new_items = get_sina_724_dt_range(start_str, end_str, save=False, scanner=st.session_state.shared_scanner)
             
             if new_items:
                 all_news = new_items + st.session_state.news_memory
@@ -96,7 +104,7 @@ if active_tab == "🚀 实时监控模式":
 
         display_data = st.session_state.news_memory
         if rt_filter_keyword and display_data:
-            display_data = filter_news(display_data, keyword=rt_filter_keyword, threshold=rt_filter_threshold)
+            display_data = filter_news(display_data, keyword=rt_filter_keyword, threshold=rt_filter_threshold, scanner=st.session_state.shared_scanner)
             st.caption(f"🔍 实时过滤：匹配到 {len(display_data)} 条记录")
 
         if display_data:
@@ -149,7 +157,7 @@ else:
 
             with st.spinner("同步中..."):
                 try:
-                    dumped_data = get_sina_724_dt_range(f_start, f_end, save=True)
+                    dumped_data = get_sina_724_dt_range(f_start, f_end, save=True, scanner=st.session_state.shared_scanner)
                     progress_bar.progress(100)
                     status_text.text("✅ 同步完成！")
                     st.sidebar.success(f"成功存入 {len(dumped_data)} 条记录")
@@ -179,7 +187,7 @@ else:
 
                 if hist_data:
                     if hist_keyword:
-                        hist_data = filter_news(hist_data, keyword=hist_keyword, threshold=hist_threshold)
+                        hist_data = filter_news(hist_data, keyword=hist_keyword, threshold=hist_threshold, scanner=st.session_state.shared_scanner)
                     else:
                         # 确保没有关键词时也是倒序排列
                         hist_data = sorted(hist_data, key=lambda x: x.get('timestamp', ''), reverse=True)

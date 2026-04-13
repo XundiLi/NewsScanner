@@ -14,6 +14,7 @@ import requests
 import pandas as pd
 from datetime import datetime, timedelta
 from sentence_transformers import SentenceTransformer, util
+from fastembed import TextEmbedding
 from typing import List, Dict, Optional, Any, Union
 
 # ==========================================
@@ -35,7 +36,7 @@ class SinaNewsScanner:
     新浪7x24快讯抓取与处理引擎
     封装了网络请求、数据解析及语义模型管理
     """
-    def __init__(self, model_name: str = 'bge-small-zh-v1.5'):
+    def __init__(self, model_name: str = 'BAAI/bge-small-zh-v1.5', model_path = None) -> None:
         """
         初始化引擎
         :param model_name: 用于语义过滤的 sentence-transformers 模型名称
@@ -45,6 +46,7 @@ class SinaNewsScanner:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
         self.model_name = model_name
+        self.model_path = model_path
         self._semantic_model = None  # 懒加载
 
     @property
@@ -55,7 +57,9 @@ class SinaNewsScanner:
         """
         if self._semantic_model is None:
             logger.info(f"⏳ 正在加载语义模型: {self.model_name}...")
-            self._semantic_model = SentenceTransformer(self.model_name)
+            self._semantic_model = TextEmbedding(model_name=self.model_name, 
+                                                 specific_model_path=self.model_path
+                                                 )
             logger.info("✅ 模型加载成功")
         return self._semantic_model
 

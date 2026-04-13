@@ -9,10 +9,11 @@ import requests
 import torch
 import sys
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Union
 from news_scanner_engine import SinaNewsScanner
-from sentence_transformers import util
+#from sentence_transformers import util
 
 # ==========================================
 # 相对路径逻辑支持
@@ -42,21 +43,25 @@ logger = logging.getLogger("SinaScanner")
 # ==========================================
 # 模块级功能函数
 # ==========================================
-LOCAL_MODEL_PATH = os.path.join(BASE_DIR, "transformer_models", "bge-small-zh-v1.5")
-_engine = SinaNewsScanner(model_name = LOCAL_MODEL_PATH)
+LOCAL_MODEL_PATH = os.path.join(BASE_DIR, "transformer_models", "BAAI--bge-small-zh-v1.5")
+# 移除模块级 _engine 初始化（使用依赖注入）
 
-def get_sina_724_dt_range(start_time_str: str, end_time_str: str, save: bool = True, file_format: str = "jsonl") -> List[Dict[str, Any]]:
+def get_sina_724_dt_range(start_time_str: str, end_time_str: str, save: bool = True, file_format: str = "jsonl", scanner: Optional[SinaNewsScanner] = None) -> List[Dict[str, Any]]:
     """
     抓取指定时间范围的新浪快讯
     :param start_time_str: 起始时间字符串 (YYYY-MM-DD HH:MM:SS)
     :param end_time_str: 结束时间字符串 (YYYY-MM-DD HH:MM:SS)
     :param save: 是否保存到本地
     :param file_format: 保存格式 (jsonl 或 xlsx)
+    :param scanner: SinaNewsScanner实例，如果未传入则创建（但推荐传入共享实例）
     :return: 抓取到的解析后数据列表
     """
+    if scanner is None:
+        scanner = SinaNewsScanner(model_name='BAAI/bge-small-zh-v1.5', model_path=LOCAL_MODEL_PATH)  # fallback创建
+    
     start_dt = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M:%S")
     end_dt = datetime.strptime(end_time_str, "%Y-%m-%d %H:%M:%S")
-    current_page = _engine.find_start_page(end_dt)
+    current_page = scanner.find_start_page(end_dt)
     
     all_news = []
     logger.info(f"🚀 扫描启动，起始页码: {current_page}")
@@ -65,14 +70,14 @@ def get_sina_724_dt_range(start_time_str: str, end_time_str: str, save: bool = T
         params = {"page": current_page, "page_size": 100, "zhibo_id": 152, "type": "all"}
         try:
             time.sleep(random.uniform(0.4, 0.7))
-            resp = requests.get(_engine.base_url, params=params, headers=_engine.headers, timeout=20).json()
+            resp = requests.get(scanner.base_url, params=params, headers=scanner.headers, timeout=20).json()
             feed_list = resp.get('result', {}).get('data', {}).get('feed', {}).get('list', [])
             if not feed_list: break
 
             for item in feed_list:
                 item_dt = datetime.strptime(item.get('create_time'), "%Y-%m-%d %H:%M:%S")
                 if start_dt <= item_dt <= end_dt:
-                    all_news.append(_engine.parse_item_full(item))
+                    all_news.append(scanner.parse_item_full(item))
                 elif item_dt < start_dt:
                     logger.info(f"🏁 抓取完成：已到达设定起始时间。")
                     return export_range_data(all_news, start_time_str, end_time_str, save=save, file_format=file_format)
@@ -215,7 +220,7 @@ def load_and_merge_news(input_dir: str = None, start_time: str = None, end_time:
     logger.info(f"✅ 合并完成！最终数据量: {len(unique_list)} 条。")
     return {"data": unique_list, "warnings": warnings}
 
-def filter_news(news_list: List[Dict[str, Any]], keyword: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None, threshold: float = 0.35) -> List[Dict[str, Any]]:
+def filter_news(news_list: List[Dict[str, Any]], keyword: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None, threshold: float = 0.35, scanner: Optional[SinaNewsScanner] = None) -> List[Dict[str, Any]]:
     """
     结合时间与语义相似度的新闻过滤器
     :param news_list: 待过滤的数据源
@@ -223,8 +228,11 @@ def filter_news(news_list: List[Dict[str, Any]], keyword: Optional[str] = None, 
     :param start_time: 过滤起始时间
     :param end_time: 过滤结束时间
     :param threshold: 语义匹配阈值
+    :param scanner: SinaNewsScanner实例，如果未传入则创建（但推荐传入共享实例）
     :return: 满足条件的过滤结果
     """
+    if scanner is None:
+        scanner = SinaNewsScanner(model_name='BAAI/bge-small-zh-v1.5', model_path=LOCAL_MODEL_PATH)  # fallback创建
     # 1. 物理时间过滤
     st = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S") if start_time else None
     ed = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S") if end_time else None
@@ -240,14 +248,29 @@ def filter_news(news_list: List[Dict[str, Any]], keyword: Optional[str] = None, 
         return sorted(pre, key=lambda x: x['timestamp'], reverse=True)
 
     # 2. 语义搜索
-    model = _engine.semantic_model
+    model = scanner.semantic_model
     corpus = [it.get('content', '') for it in pre]
+
+    '''
     corpus_emb = model.encode(corpus, convert_to_tensor=True)
     query_emb = model.encode("为这个句子生成表示以用于检索相关文章：" + keyword, convert_to_tensor=True)
     scores = util.cos_sim(query_emb, corpus_emb)[0]
     
     res = []
     for i, score in enumerate(scores):
+        if score >= threshold:
+            it = pre[i].copy()
+            it['score'] = round(float(score), 4)
+            res.append(it)
+    '''
+    corpus_emb = model.embed(corpus)
+    query_emb = model.embed("为这个句子生成表示以用于检索相关文章：" + keyword)
+    query_vec = next(query_emb) 
+
+    res = []
+    for i, doc_vec in enumerate(corpus_emb):
+        # 计算余弦相似度: (A · B) / (||A|| * ||B||), FastEmbed 的向量默认已经归一化（norm=1），所以直接点积(dot)通常就等于余弦相似度
+        score = np.dot(query_vec, doc_vec)
         if score >= threshold:
             it = pre[i].copy()
             it['score'] = round(float(score), 4)
