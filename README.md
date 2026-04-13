@@ -49,13 +49,13 @@ conda activate news_scanner
    git lfs pull
    ```
 
-*注意：如果 `model.safetensors` 文件仅有 1KB 左右（指针文件），程序运行时会报错 `SafetensorError: Error while deserializing header`，请务必执行以上拉取步骤。*
+*注意：如果 `model_optimized.onnx` 文件仅有 1KB 左右（指针文件），程序运行时会报错，请务必执行以上拉取步骤。*
 
 ### 3. 安装依赖
 在项目根目录下运行：
 
 ```bash
-pip install requests torch pandas sentence-transformers streamlit streamlit-autorefresh
+pip install requests pandas streamlit fastembed
 ```
 
 ### 3. 配置飞书通知 (可选)
