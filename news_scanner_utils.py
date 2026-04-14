@@ -13,7 +13,6 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Union
 from news_scanner_engine import SinaNewsScanner
-#from sentence_transformers import util
 
 # ==========================================
 # 相对路径逻辑支持
@@ -220,7 +219,15 @@ def load_and_merge_news(input_dir: str = None, start_time: str = None, end_time:
     logger.info(f"✅ 合并完成！最终数据量: {len(unique_list)} 条。")
     return {"data": unique_list, "warnings": warnings}
 
-def filter_news(news_list: List[Dict[str, Any]], keyword: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None, threshold: float = 0.35, scanner: Optional[SinaNewsScanner] = None) -> List[Dict[str, Any]]:
+def filter_news(
+    news_list: List[Dict[str, Any]], 
+    keyword: Optional[str] = None, 
+    start_time: Optional[str] = None, 
+    end_time: Optional[str] = None, 
+    threshold: float = 0.35, 
+    scanner: Optional[Any] = None,
+    low_memory_mode: bool = False
+) -> List[Dict[str, Any]]:
     """
     结合时间与语义相似度的新闻过滤器
     :param news_list: 待过滤的数据源
@@ -229,52 +236,75 @@ def filter_news(news_list: List[Dict[str, Any]], keyword: Optional[str] = None, 
     :param end_time: 过滤结束时间
     :param threshold: 语义匹配阈值
     :param scanner: SinaNewsScanner实例，如果未传入则创建（但推荐传入共享实例）
+    :param low_memory_mode: True 为流式处理（极致省内存），False 为矩阵处理（高效率）
     :return: 满足条件的过滤结果
     """
     if scanner is None:
-        scanner = SinaNewsScanner(model_name='BAAI/bge-small-zh-v1.5', model_path=LOCAL_MODEL_PATH)  # fallback创建
-    # 1. 物理时间过滤
+        scanner = SinaNewsScanner(model_name='BAAI/bge-small-zh-v1.5', model_path=LOCAL_MODEL_PATH)
+
+    if not news_list:
+        return []
+
     st = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S") if start_time else None
     ed = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S") if end_time else None
     
-    pre = []
-    for it in news_list:
+    valid_indices = []
+    for i, it in enumerate(news_list):
         dt = datetime.strptime(it['timestamp'], "%Y-%m-%d %H:%M:%S")
-        if st and dt < st: continue
-        if ed and dt > ed: continue
-        pre.append(it)
+        if (st and dt < st) or (ed and dt > ed):
+            continue
+        valid_indices.append(i)
         
-    if not keyword or not pre:
-        return sorted(pre, key=lambda x: x['timestamp'], reverse=True)
+    if not valid_indices:
+        return []
 
-    # 2. 语义搜索
+    # 如果没有关键词，直接根据索引返回排序后的原数据引用
+    if not keyword:
+        filtered_news = [news_list[i] for i in valid_indices]
+        return sorted(filtered_news, key=lambda x: x['timestamp'], reverse=True)
+
+    #语义准备
     model = scanner.semantic_model
-    corpus = [it.get('content', '') for it in pre]
-
-    '''
-    corpus_emb = model.encode(corpus, convert_to_tensor=True)
-    query_emb = model.encode("为这个句子生成表示以用于检索相关文章：" + keyword, convert_to_tensor=True)
-    scores = util.cos_sim(query_emb, corpus_emb)[0]
+    query_text = f"为这个句子生成表示以用于检索相关文章：{keyword}"
+    # 使用 next() 获取生成器中的唯一向量
+    query_vec = next(model.embed([query_text]))
     
-    res = []
-    for i, score in enumerate(scores):
-        if score >= threshold:
-            it = pre[i].copy()
-            it['score'] = round(float(score), 4)
-            res.append(it)
-    '''
-    corpus_emb = model.embed(corpus)
-    query_emb = model.embed("为这个句子生成表示以用于检索相关文章：" + keyword)
-    query_vec = next(query_emb) 
+    # 定义一个内部生成器，动态提取文本，避免创建巨大的字符串列表
+    def corpus_generator():
+        for idx in valid_indices:
+            item = news_list[idx]
+            # 优先取正文，没有则取标题
+            yield item.get('content', '') or item.get('title', '')
 
     res = []
-    for i, doc_vec in enumerate(corpus_emb):
-        # 计算余弦相似度: (A · B) / (||A|| * ||B||), FastEmbed 的向量默认已经归一化（norm=1），所以直接点积(dot)通常就等于余弦相似度
-        score = np.dot(query_vec, doc_vec)
-        if score >= threshold:
-            it = pre[i].copy()
-            it['score'] = round(float(score), 4)
-            res.append(it)
+    
+    # --- 模式选择 ---
+
+    if low_memory_mode:
+        # 【版本 A：极致低内存模式】
+        # 使用 batch_size=1 强制流式推理，内存占用几乎为常量
+        corpus_emb = model.embed(corpus_generator(), batch_size=1)
+        for i, doc_vec in enumerate(corpus_emb):
+            score = np.dot(query_vec, doc_vec)
+            if score >= threshold:
+                # 只有通过筛选的才创建副本，节省内存
+                actual_idx = valid_indices[i]
+                item = news_list[actual_idx].copy()
+                item['score'] = round(float(score), 4)
+                res.append(item)
+    else:
+        # 【版本 B：高效率模式】
+        # 批量将向量转为矩阵，利用 numpy 的 BLAS 加速
+        corpus_mat = np.array(list(model.embed(corpus_generator())))
+        scores = np.dot(corpus_mat, query_vec)
+        
+        # 使用 numpy 索引加速筛选
+        pass_indices = np.where(scores >= threshold)[0]
+        for idx in pass_indices:
+            actual_idx = valid_indices[idx]
+            item = news_list[actual_idx].copy()
+            item['score'] = round(float(scores[idx]), 4)
+            res.append(item)
             
     return sorted(res, key=lambda x: x['timestamp'], reverse=True)
 
